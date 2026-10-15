@@ -35,6 +35,12 @@ namespace Entety_ORM.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal>("Salary")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(1500m);
+
                     b.HasKey("Id");
 
                     b.ToTable("Coaches");

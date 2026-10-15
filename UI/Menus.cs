@@ -136,8 +136,10 @@ public class Menus
                 case 1:
                 {
                     var name = ReadRequiredString("Name:", 100);
-                    var coach = await _coaches.AddAsync(name);
-                    Success($"Coach added with ID {coach.Id}.");
+                    var salary = ReadOptionalDecimal(
+                        $"Monthly salary (press Enter for the standard {Coach.DefaultMonthlySalary:C}):",
+                        CoachService.MinSalary, CoachService.MaxSalary);
+                    ShowResult(await _coaches.AddAsync(name, salary));
                     break;
                 }
                 case 2:
@@ -161,9 +163,11 @@ public class Menus
                         break;
                     }
 
-                    Info($"Current name: {coach.Name}");
-                    var name = ReadRequiredString("New name:", 100);
-                    ShowResult(await _coaches.UpdateAsync(id, name));
+                    Info($"Current: {coach.Name}, monthly salary {coach.Salary:C}. Press Enter to keep a value.");
+                    var name = ReadOptionalString("New name:", 100) ?? coach.Name;
+                    var salary = ReadOptionalDecimal("New monthly salary:",
+                        CoachService.MinSalary, CoachService.MaxSalary) ?? coach.Salary;
+                    ShowResult(await _coaches.UpdateAsync(id, name, salary));
                     break;
                 }
                 case 5:
@@ -340,13 +344,18 @@ public class Menus
             return;
         }
 
-        var table = CreateTable("ID", "Name", "Sessions");
+        var table = CreateTable("ID", "Name", "Monthly Salary", "Sessions");
         table.Title($"[bold green]{Markup.Escape(title)}[/]");
         table.Columns[0].RightAligned();
-        table.Columns[2].Centered();
+        table.Columns[2].RightAligned();
+        table.Columns[3].Centered();
 
         foreach (var c in coaches)
-            table.AddRow(c.Id.ToString(), Markup.Escape(c.Name), c.TrainingSessions.Count.ToString());
+            table.AddRow(
+                c.Id.ToString(),
+                Markup.Escape(c.Name),
+                $"[green]{c.Salary:C}[/]",
+                c.TrainingSessions.Count.ToString());
 
         AnsiConsole.Write(table);
         AnsiConsole.MarkupLine($"[grey]Total: {coaches.Count}[/]");

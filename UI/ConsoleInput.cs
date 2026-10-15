@@ -135,6 +135,23 @@ public static class ConsoleInput
         }
     }
 
+    // Returns null when the user presses Enter (keep current / default value)
+    public static decimal? ReadOptionalDecimal(string prompt, decimal min, decimal max)
+    {
+        while (true)
+        {
+            var text = Ask(prompt).Replace("$", "").Replace(",", "");
+
+            if (text.Length == 0)
+                return null;
+            if (decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var value)
+                && value >= min && value <= max)
+                return Math.Round(value, 2);
+
+            Error($"Please enter an amount between {min:C} and {max:C}, or press Enter to skip.");
+        }
+    }
+
     public static int ReadId(string entityName) =>
         ReadInt($"Enter {entityName} ID:", 1);
 
@@ -180,7 +197,12 @@ public static class ConsoleInput
     private static string Ask(string prompt)
     {
         AnsiConsole.Markup($"[deepskyblue1]{Markup.Escape(prompt)}[/] ");
-        return Console.ReadLine()?.Trim() ?? string.Empty;
+
+        // ReadLine returns null when the input stream is closed (e.g. piped input ended).
+        // Stop instead of looping forever on validation errors.
+        var line = Console.ReadLine()
+            ?? throw new EndOfStreamException("Input stream closed.");
+        return line.Trim();
     }
 
     /* ==================== Messages ==================== */
@@ -206,7 +228,8 @@ public static class ConsoleInput
     {
         AnsiConsole.WriteLine();
         AnsiConsole.Markup("[grey]Press Enter to continue...[/]");
-        Console.ReadLine();
+        if (Console.ReadLine() is null)
+            throw new EndOfStreamException("Input stream closed.");
     }
 
     // Console.Clear fails when there is no real console window

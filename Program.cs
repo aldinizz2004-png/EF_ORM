@@ -10,6 +10,12 @@ using Microsoft.Extensions.Logging;
 // UTF-8 so symbols like ✔ and table borders show correctly
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
+// Show money as US dollars ($1,500.00) regardless of the Windows region settings
+var usCulture = new System.Globalization.CultureInfo("en-US");
+System.Globalization.CultureInfo.DefaultThreadCurrentCulture = usCulture;
+System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = usCulture;
+System.Globalization.CultureInfo.CurrentCulture = usCulture;
+
 var builder = Host.CreateApplicationBuilder(args);
 
 var connectionString = builder.Configuration
@@ -20,7 +26,7 @@ var connectionString = builder.Configuration
 // Hide EF Core's SQL logs so they don't clutter the console menu
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
 
-// Same DbContext + database from Monday's task (no new migrations)
+// Same DbContext + database from Monday's task
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
@@ -57,6 +63,10 @@ try
 {
     var menus = scope.ServiceProvider.GetRequiredService<Menus>();
     await menus.RunAsync();
+}
+catch (EndOfStreamException)
+{
+    // Input ended (no more lines to read) - just exit normally
 }
 catch (Exception ex)
 {

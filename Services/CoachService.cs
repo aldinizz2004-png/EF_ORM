@@ -6,6 +6,9 @@ namespace FootballTrainingManagement.Services;
 
 public class CoachService
 {
+    public const decimal MinSalary = 0.01m;
+    public const decimal MaxSalary = 1_000_000m;
+
     private readonly ApplicationDbContext _db;
 
     public CoachService(ApplicationDbContext db)
@@ -13,15 +16,24 @@ public class CoachService
         _db = db;
     }
 
-    // Add a new coach
-    public async Task<Coach> AddAsync(string name)
+    // Add a new coach.
+    // When no salary is given the coach gets the standard starting salary (1500).
+    public async Task<OperationResult> AddAsync(string name, decimal? salary = null)
     {
-        var coach = new Coach { Name = name.Trim() };
+        var finalSalary = salary ?? Coach.DefaultMonthlySalary;
+        if (!IsValidSalary(finalSalary))
+            return OperationResult.Fail(SalaryRangeMessage);
+
+        var coach = new Coach
+        {
+            Name = name.Trim(),
+            Salary = finalSalary
+        };
 
         await _db.Coaches.AddAsync(coach);
         await _db.SaveChangesAsync();
 
-        return coach;
+        return OperationResult.Ok($"Coach added with ID {coach.Id} and a monthly salary of {coach.Salary:C}.");
     }
 
     // Display all coaches (with their sessions so we can show a count)
@@ -54,17 +66,22 @@ public class CoachService
         return await _db.TrainingSessions.CountAsync(t => t.CoachId == id);
     }
 
-    // Update a coach's information
-    public async Task<OperationResult> UpdateAsync(int id, string name)
+    // Update a coach's full profile (name + monthly salary).
+    // Loads the tracked entity, changes its values, and commits with SaveChangesAsync().
+    public async Task<OperationResult> UpdateAsync(int id, string name, decimal salary)
     {
+        if (!IsValidSalary(salary))
+            return OperationResult.Fail(SalaryRangeMessage);
+
         var coach = await _db.Coaches.FindAsync(id);
         if (coach is null)
             return OperationResult.Fail($"Coach with ID {id} was not found.");
 
         coach.Name = name.Trim();
+        coach.Salary = salary;
 
         await _db.SaveChangesAsync();
-        return OperationResult.Ok($"Coach {id} updated successfully.");
+        return OperationResult.Ok($"Coach {id} updated: {coach.Name}, monthly salary {coach.Salary:C}.");
     }
 
     // Delete a coach.
@@ -81,4 +98,10 @@ public class CoachService
 
         return OperationResult.Ok($"Coach {id} deleted successfully.");
     }
+
+    private static bool IsValidSalary(decimal salary) =>
+        salary >= MinSalary && salary <= MaxSalary;
+
+    private static string SalaryRangeMessage =>
+        $"Salary must be between {MinSalary:C} and {MaxSalary:C}.";
 }
